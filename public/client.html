@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client - Geolocation Attendance</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Background Video -->
+    <video autoplay muted loop id="background-video">
+        <source src="background.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+    <div class="container">
+        <!-- Header Section -->
+        <header class="header">
+            <h1>Geolocation Attendance - Client</h1>
+            <img src="logo.png" alt="Logo" class="logo">
+        </header>
+
+        <!-- Client Input Form -->
+        <section class="form-section">
+            <h2>Enter Your Details</h2>
+
+            <label for="name">Full Name:</label>
+            <input type="text" id="name" placeholder="Enter your name">
+
+            <label for="position">Position in College:</label>
+            <input type="text" id="position" placeholder="Enter your position (e.g., Student, Professor)">
+
+            <label for="photo">Upload Photo:</label>
+            <input type="file" id="photo" accept="image/*">
+
+            <label for="code">Event Code:</label>
+            <input type="text" id="code" placeholder="Enter the 6-digit code from the server">
+
+            <button class="primary-btn" onclick="markAttendance()">Mark Attendance</button>
+
+            <p id="status"></p>
+        </section>
+    </div>
+
+    <script>
+        async function markAttendance() {
+            const name = document.getElementById("name").value;
+            const position = document.getElementById("position").value;
+            const photo = document.getElementById("photo").files[0];
+            const code = document.getElementById("code").value;
+            const statusElement = document.getElementById("status");
+
+            if (!name || !position || !photo || !code) {
+                statusElement.textContent = "Please fill all fields and upload a photo.";
+                statusElement.classList.add("error");
+                return;
+            }
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(async (positionData) => {
+                    const latitude = positionData.coords.latitude;
+                    const longitude = positionData.coords.longitude;
+
+                    const formData = new FormData();
+                    formData.append("name", name);
+                    formData.append("position", position);
+                    formData.append("photo", photo);
+                    formData.append("code", code);
+                    formData.append("latitude", latitude);
+                    formData.append("longitude", longitude);
+
+                    try {
+                        const response = await fetch('/mark-attendance', {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        const data = await response.json();
+                        statusElement.textContent = data.message;
+                        statusElement.classList.remove("error");
+                        statusElement.classList.add("success");
+                    } catch (error) {
+                        statusElement.textContent = "Error marking attendance.";
+                        statusElement.classList.add("error");
+                    }
+                });
+            } else {
+                statusElement.textContent = "Geolocation is not supported by this browser.";
+                statusElement.classList.add("error");
+            }
+        }
+    </script>
+</body>
+</html>

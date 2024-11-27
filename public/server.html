@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server: Geolocation Attendance</title>
+    <link rel="stylesheet" href="styles1.css">
+    <style>
+        /* Scrollable attendance log box */
+        .attendance-log-box {
+            max-height: 300px;  /* Adjust the height as per your requirement */
+            overflow-y: auto;   /* Enable vertical scrolling */
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 20px;
+        }
+
+        #attendance-logs {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        #attendance-logs li {
+            padding: 8px;
+            margin-bottom: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        /* Clear log button */
+        #clear-log-button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        #clear-log-button:hover {
+            background-color: #d32f2f;
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Video -->
+    <video autoplay muted loop id="background-video">
+        <source src="background.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+    <div class="container">
+        <h1>Server - Geolocation Attendance System</h1>
+
+        <div class="flex-container">
+            <!-- Configure Attendance Session -->
+            <section class="box left-box">
+                <h2>Configure Attendance Session</h2>
+                <label for="event-name">Event/Location Name:</label>
+                <input type="text" id="event-name" placeholder="Enter event name">
+
+                <label for="latitude">Latitude:</label>
+                <input type="text" id="latitude" placeholder="Enter Latitude">
+
+                <label for="longitude">Longitude:</label>
+                <input type="text" id="longitude" placeholder="Enter Longitude">
+
+                <label for="range">Range (meters):</label>
+                <input type="number" id="range" placeholder="Enter range (e.g., 100 meters)">
+
+                <button onclick="startServer()">Start Server</button>
+                <h3>Generated Code: <span id="code"></span></h3>
+            </section>
+
+            <!-- Add User Details -->
+            <section class="box right-box">
+                <h2>Add User Information</h2>
+                <label for="user-name">Name:</label>
+                <input type="text" id="user-name" placeholder="Enter name">
+
+                <label for="position">Position in College:</label>
+                <input type="text" id="position" placeholder="Enter position (e.g., Student, Professor)">
+
+                <label for="photo">Upload Photo:</label>
+                <input type="file" id="photo" accept="image/*">
+
+                <button onclick="addUser()">Add User</button>
+            </section>
+
+            <!-- Attendance Log Section -->
+            <section class="box attendance-log-box">
+                <h2>Attendance Log</h2>
+                <ul id="attendance-logs">
+                    <!-- Attendance logs will be updated here -->
+                </ul>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        async function startServer() {
+            const eventName = document.getElementById("event-name").value;
+            const latitude = document.getElementById("latitude").value;
+            const longitude = document.getElementById("longitude").value;
+            const range = document.getElementById("range").value;
+
+            if (!eventName || !latitude || !longitude || !range) {
+                alert("Please fill all the fields to start the server.");
+                return;
+            }
+
+            const response = await fetch('/start-server', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ eventName, latitude, longitude, range })
+            });
+            const data = await response.json();
+            document.getElementById("code").textContent = data.code;
+        }
+
+        async function addUser() {
+            const userName = document.getElementById("user-name").value;
+            const position = document.getElementById("position").value;
+            const photo = document.getElementById("photo").files[0];
+
+            if (!userName || !position || !photo) {
+                alert("Please fill all fields and upload a photo.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("name", userName);
+            formData.append("position", position);
+            formData.append("photo", photo);
+
+            const response = await fetch('/add-user', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+            alert(data.message);
+        }
+
+        // Function to fetch and display attendance logs
+        async function fetchAttendanceLogs() {
+            try {
+                const response = await fetch('/attendance-logs');
+                const data = await response.json();
+
+                const logContainer = document.getElementById('attendance-logs');
+                logContainer.innerHTML = ''; // Clear the current logs
+
+                // Check if there are logs
+                if (data.logs && data.logs.length > 0) {
+                    data.logs.forEach(log => {
+                        const logItem = document.createElement('li');
+                        logItem.textContent = `${log.name} (${log.position}) marked attendance at ${log.timestamp} | Location: Latitude: ${log.latitude}, Longitude: ${log.longitude}`;
+                        logContainer.appendChild(logItem);
+                    });
+                } else {
+                    const logItem = document.createElement('li');
+                    logItem.textContent = 'No attendance records yet.';
+                    logContainer.appendChild(logItem);
+                }
+            } catch (error) {
+                console.error('Error fetching logs:', error);
+            }
+        }
+
+        // Function to clear the logs
+        async function clearLogs() {
+            try {
+                const response = await fetch('/clear-logs', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    alert("Logs have been cleared!");
+                    fetchAttendanceLogs(); // Refresh the log display after clearing
+                } else {
+                    alert("Error clearing logs.");
+                }
+            } catch (error) {
+                console.error("Error clearing logs:", error);
+            }
+        }
+
+        // Continuously update logs every 5 seconds
+        setInterval(fetchAttendanceLogs, 5000); // Fetch logs every 5 seconds
+
+        // Initial log fetch when the page loads
+        fetchAttendanceLogs();
+    </script>
+</body>
+</html>
